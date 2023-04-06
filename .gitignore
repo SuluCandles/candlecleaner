@@ -4,3 +4,6 @@ __pycache__/
 # Ignore build and distribution directories
 build/
 dist/
+
+# Ignore build files
+candlecleaner.spec

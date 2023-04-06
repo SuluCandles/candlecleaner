@@ -1,9 +1,10 @@
 ###################################################################################################
 # candlecleaner.py
 #
-# A GUI application that allows the user to select a directory and remove a specified string 
-# from the names of the files within the directory. Additionally supports a smart cleaning
-# feature which utilizes regular expressions to clean each sub directory
+# A GUI application that allows the user to select a directory and remove a specified string from 
+# the names of the files within the selected directory recursively. Features a smart cleaning 
+# feature which generates regular expressions to remove, by normalizing (all lowercase, with spaces,
+# hyphens turned into underscores) all file names and finding a common prefix for each subdirectory.
 #
 # Author: Filip "a candle"
 # Date created: 4/4/23
@@ -17,17 +18,29 @@ try:
     import tkinter as tk
     from tkinter import *
     from tkinter import filedialog, messagebox, ttk
+    from PIL import Image, ImageTk
 except ImportError:
     print("Tkinter is not installed. Please install it before running this script.")
     exit()
 
 class CleanerApp(tk.Tk):
-    """Main application window."""
-
-    def __init__(self):
-        """Initialize the application window and its widgets."""
+    def __init__(self, is_unit_test=False):
         super().__init__()
         self.title("candlecleaner")
+        self.geometry('1000x800')
+
+        # Check if the script is being run as a patch unit test
+        self.is_unit_test = is_unit_test
+        if not self.is_unit_test:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            icon_path = os.path.join(script_dir, "icon.ico")
+
+            # Load the image file using PIL
+            image = Image.open(icon_path)
+            photo = ImageTk.PhotoImage(image)
+
+            # Set the photo as the icon image
+            self.iconphoto(True, photo)
 
         self.directory_frame = tk.Frame(self)
         self.directory_frame.grid(row=1, column=1, pady=10, padx=10, sticky="we")
@@ -67,11 +80,13 @@ class CleanerApp(tk.Tk):
         self.file_tree = ttk.Treeview(self, columns=("size"))
         self.file_tree.heading("#0", text="Files", anchor="w")
         self.file_tree.heading("size", text="Size", anchor="w")
+        self.file_tree.column("size", width=int(self.file_tree.column("#0")["width"] * 0.2))
         self.file_tree.grid(row=3, column=1, rowspan=3, padx=10, pady=10, sticky="nsew")
 
         self.updated_file_tree = ttk.Treeview(self, columns=("size"))
         self.updated_file_tree.heading("#0", text="Files", anchor="w")
         self.updated_file_tree.heading("size", text="Size", anchor="w")
+        self.updated_file_tree.column("size", width=int(self.updated_file_tree.column("#0")["width"] * 0.2))
         self.updated_file_tree.grid(row=3, column=2, rowspan=3, padx=10, pady=10, sticky="nsew")
 
         self.update_button = tk.Button(self, text="Update Right Column", command=self.update_file_list)

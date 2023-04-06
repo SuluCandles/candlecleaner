@@ -7,7 +7,7 @@ from candlecleaner import CleanerApp
 
 class TestCleanerApp(unittest.TestCase):
     def setUp(self):
-        self.app = CleanerApp()
+        self.app = CleanerApp(True)
         self.directory = os.getcwd()
 
     def test_select_directory(self):
