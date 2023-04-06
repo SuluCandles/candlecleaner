@@ -1,7 +1,7 @@
 # candlecleaner
 
 A GUI application that allows the user to select a directory and remove a specified string from the names of the files within the selected directory recursively.
-Features a smart cleaning feature which generates regular expressions to remove, by normalizing (all lowercase, with spaces, hyphens turned into underscores) all 
+Features a smart cleaning feature which generates regular expressions to remove, by normalizing (all lowercase, with spaces and hyphens turned into underscores) all 
 file names and finding a common prefix for each subdirectory.
 
 Prerequisites
