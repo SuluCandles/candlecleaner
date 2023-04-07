@@ -9,6 +9,7 @@ Prerequisites
     Python 3.10.6
     Tkinter
     Pillow
+    Pyinstaller
 
 How to use:
 
