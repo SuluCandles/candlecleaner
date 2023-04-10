@@ -51,7 +51,7 @@ class CleanerApp(tk.Tk):
         self.string_var = tk.StringVar()
         self.regex_list = []
 
-        self.select_button = tk.Button(self.directory_frame, text="Select Directory", command=self.select_directory, padx=10, anchor="w")
+        self.select_button = tk.Button(self.directory_frame, text="Select Directory", command=self.select_directory, padx=10, anchor="w", justify=CENTER)
         self.select_button.pack(side="left")
 
         self.spacer = tk.Frame(self.directory_frame, width=10, height=1, bg=self.directory_frame["bg"])
@@ -81,18 +81,25 @@ class CleanerApp(tk.Tk):
         self.file_tree.heading("#0", text="Files", anchor="w")
         self.file_tree.heading("size", text="Size", anchor="w")
         self.file_tree.column("size", width=int(self.file_tree.column("#0")["width"] * 0.2))
-        self.file_tree.grid(row=3, column=1, rowspan=3, padx=10, pady=10, sticky="nsew")
+        self.file_tree_scroll = tk.Scrollbar(self, orient="vertical", command=self.file_tree.yview)
+        self.file_tree_scroll.grid(row=3, column=1, rowspan=3, padx=10, pady=10, sticky="nse")
+        self.file_tree.configure(yscrollcommand=self.file_tree_scroll.set)
+        self.file_tree.grid(row=3, column=1, padx=10, pady=10, sticky="nsew")
 
         self.updated_file_tree = ttk.Treeview(self, columns=("size"))
         self.updated_file_tree.heading("#0", text="Files", anchor="w")
         self.updated_file_tree.heading("size", text="Size", anchor="w")
         self.updated_file_tree.column("size", width=int(self.updated_file_tree.column("#0")["width"] * 0.2))
-        self.updated_file_tree.grid(row=3, column=2, rowspan=3, padx=10, pady=10, sticky="nsew")
+        self.updated_file_tree_scroll = tk.Scrollbar(self, orient="vertical", command=self.updated_file_tree.yview)
+        self.updated_file_tree_scroll.grid(row=3, column=2, rowspan=3, padx=10, pady=10, sticky="nse")
+        self.updated_file_tree.configure(yscrollcommand=self.updated_file_tree_scroll.set)
+        self.updated_file_tree.grid(row=3, column=2, padx=10, pady=10, sticky="nsew")
 
-        self.update_button = tk.Button(self, text="Update Right Column", command=self.update_file_list)
+
+        self.update_button = tk.Button(self, text="Update Right Column", command=self.update_file_list, justify=CENTER)
         self.update_button.grid(row=6, column=1, pady=5)
 
-        self.rename_button = tk.Button(self, text="Rename Files", command=self.rename_files)
+        self.rename_button = tk.Button(self, text="Rename Files", command=self.rename_files, justify=CENTER)
         self.rename_button.grid(row=6, column=2, pady=5)
 
         # Configure the grid layout
@@ -165,7 +172,7 @@ class CleanerApp(tk.Tk):
 
                 # Add files to the current folder node
                 for filename in filenames:
-                    if filename != ".DS_Store":  # Ignore .DS_Store file
+                    if not filename.startswith("."):  # Ignore hidden files
                         file_path = os.path.join(dirpath, filename)
                         file_size = os.path.getsize(file_path)
                         self.file_tree.insert(parent_ids[dirpath]['file_tree'], END, text=filename, values=(file_size,))
@@ -204,6 +211,8 @@ class CleanerApp(tk.Tk):
                             file_shown = filename
                         pattern = re.compile(re.escape(string_to_remove), re.IGNORECASE)
                         updated_file_name = re.sub(pattern, "", file_shown)
+                        if filename.startswith("."):
+                            updated_file_name = "." + updated_file_name
                         src = os.path.join(dirpath, filename)
                         dst = os.path.join(dirpath, updated_file_name)
                         try:
@@ -218,8 +227,8 @@ class CleanerApp(tk.Tk):
             
 
     def generate_regex(self, filenames, dirname):
-            # Filter out any filenames that are named .DS_Store
-            filenames = [f for f in filenames if f != '.DS_Store']
+            # Filter out any filenames that are not hidden
+            filenames = [f for f in filenames if not f.startswith(".")]
             if not filenames:
                 # If all filenames were named .DS_Store, return an empty string
                 return ""
