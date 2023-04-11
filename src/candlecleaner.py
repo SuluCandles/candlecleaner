@@ -24,6 +24,13 @@ except ImportError:
     exit()
 
 class CleanerApp(tk.Tk):
+
+    def file_tree_scroll_mouse_wheel(self, event):
+        self.updated_file_tree.yview_scroll(int(-1*(event.delta/120)), "units")
+
+    def updated_file_tree_scroll_mouse_wheel(self, event):
+        self.file_tree.yview_scroll(int(-1*(event.delta/120)), "units")
+
     def __init__(self, is_unit_test=False):
         super().__init__()
         self.title("candlecleaner")
@@ -76,28 +83,50 @@ class CleanerApp(tk.Tk):
 
         # Associate the validation function with the string variable
         self.string_var.trace("w", lambda *args: self.validate_string_entry())
+        self.string_var.trace("w", lambda *args: (self.validate_string_entry(), self.update_file_list()) )
+
+        self.scroll_sync_var = tk.BooleanVar()
+        self.scroll_sync_check_box = tk.Checkbutton(self, text="Scroll Sync", variable=self.scroll_sync_var, command=self.scroll_sync_toggle)
+        self.scroll_sync_check_box.grid(row=6, column=2, pady=10, sticky="w")
+        self.scroll_sync_check_box.select()
 
         self.file_tree = ttk.Treeview(self, columns=("size"))
         self.file_tree.heading("#0", text="Files", anchor="w")
         self.file_tree.heading("size", text="Size", anchor="w")
         self.file_tree.column("size", width=int(self.file_tree.column("#0")["width"] * 0.2))
-        self.file_tree_scroll = tk.Scrollbar(self, orient="vertical", command=self.file_tree.yview)
-        self.file_tree_scroll.grid(row=3, column=1, rowspan=3, padx=10, pady=10, sticky="nse")
-        self.file_tree.configure(yscrollcommand=self.file_tree_scroll.set)
         self.file_tree.grid(row=3, column=1, padx=10, pady=10, sticky="nsew")
 
         self.updated_file_tree = ttk.Treeview(self, columns=("size"))
         self.updated_file_tree.heading("#0", text="Files", anchor="w")
         self.updated_file_tree.heading("size", text="Size", anchor="w")
         self.updated_file_tree.column("size", width=int(self.updated_file_tree.column("#0")["width"] * 0.2))
-        self.updated_file_tree_scroll = tk.Scrollbar(self, orient="vertical", command=self.updated_file_tree.yview)
-        self.updated_file_tree_scroll.grid(row=3, column=2, rowspan=3, padx=10, pady=10, sticky="nse")
-        self.updated_file_tree.configure(yscrollcommand=self.updated_file_tree_scroll.set)
         self.updated_file_tree.grid(row=3, column=2, padx=10, pady=10, sticky="nsew")
 
+        self.file_tree_scroll = tk.Scrollbar(self, orient="vertical", command=self.file_tree_yview)
+        self.file_tree_scroll.grid(row=3, column=1, rowspan=3, padx=10, pady=10, sticky="nse")
+        self.file_tree.configure(yscrollcommand=self.file_tree_scroll.set)
+        self.file_tree.bind("<MouseWheel>", self.file_tree_scroll_mouse_wheel)
 
-        self.update_button = tk.Button(self, text="Update Right Column", command=self.update_file_list, justify=CENTER)
-        self.update_button.grid(row=6, column=1, pady=5)
+        self.updated_file_tree_scroll = tk.Scrollbar(self, orient="vertical", command=self.updated_file_tree_yview)
+        self.updated_file_tree_scroll.grid(row=3, column=2, rowspan=3, padx=10, pady=10, sticky="nse")
+        self.updated_file_tree.configure(yscrollcommand=self.updated_file_tree_scroll.set)
+        self.updated_file_tree.bind("<MouseWheel>", self.updated_file_tree_scroll_mouse_wheel)
+
+        # Add a callback to each scrollbar that sets the position of the other scrollbar
+        def sync_scrolls(first_treeview, second_treeview):
+            def scroll_handler(*args):
+                if self.scroll_sync_var.get():
+                    first_treeview.yview_moveto(args[1])
+                    second_treeview.yview_moveto(args[1])
+                else:
+                    first_treeview.yview_moveto(args[1])
+            return scroll_handler
+
+        self.file_tree_scroll.config(command=sync_scrolls(self.file_tree, self.updated_file_tree))
+        self.updated_file_tree_scroll.config(command=sync_scrolls(self.updated_file_tree, self.file_tree))
+
+        #self.update_button = tk.Button(self, text="Update Right Column", command=self.update_file_list, justify=CENTER)
+        #self.update_button.grid(row=6, column=1, pady=5)
 
         self.rename_button = tk.Button(self, text="Rename Files", command=self.rename_files, justify=CENTER)
         self.rename_button.grid(row=6, column=2, pady=5)
@@ -106,6 +135,23 @@ class CleanerApp(tk.Tk):
         self.grid_rowconfigure(3, weight=1)
         self.grid_columnconfigure(1, weight=1)
         self.grid_columnconfigure(2, weight=1)
+
+    def scroll_sync_toggle(self):
+        if self.scroll_sync_var.get():
+            self.file_tree.bind("<MouseWheel>", self.file_tree_scroll_mouse_wheel)
+            self.updated_file_tree.bind("<MouseWheel>", self.updated_file_tree_scroll_mouse_wheel)
+            self.updated_file_tree.yview_moveto(self.file_tree.yview()[0])
+        else:
+            self.file_tree.unbind("<MouseWheel>")
+            self.updated_file_tree.unbind("<MouseWheel>")
+
+    def file_tree_yview(self, *args):
+        self.file_tree.yview(*args)
+        self.updated_file_tree.yview(*args)
+
+    def updated_file_tree_yview(self, *args):
+        self.updated_file_tree.yview(*args)
+        self.file_tree.yview(*args)
 
     # If checkbox is selected, string entry should be disabled
     def validate_string_entry(self):
@@ -211,8 +257,6 @@ class CleanerApp(tk.Tk):
                             file_shown = filename
                         pattern = re.compile(re.escape(string_to_remove), re.IGNORECASE)
                         updated_file_name = re.sub(pattern, "", file_shown)
-                        if filename.startswith("."):
-                            updated_file_name = "." + updated_file_name
                         src = os.path.join(dirpath, filename)
                         dst = os.path.join(dirpath, updated_file_name)
                         try:
