@@ -1,9 +1,7 @@
 import unittest
 import os
 import shutil
-import time
 from unittest.mock import patch
-from tkinter import Tk
 from candlecleaner import CleanerApp
 
 class TestCleanerApp(unittest.TestCase):
@@ -15,22 +13,6 @@ class TestCleanerApp(unittest.TestCase):
         with patch('tkinter.filedialog.askdirectory', return_value=self.directory):
             self.app.select_directory()
             self.assertEqual(self.app.directory_var.get(), self.directory)
-
-    def test_validate_directory(self):
-        self.assertFalse(self.app.directory_var.get())
-        self.assertEqual(self.app.check_box.cget('state'), 'disabled')
-
-        self.app.directory_var.set('/invalid/directory')
-        self.assertFalse(self.app.validate_directory())
-        self.assertEqual(self.app.check_box.cget('state'), 'disabled')
-
-        self.app.directory_var.set(self.app.directory_var.get() + " ")
-        self.assertFalse(self.app.validate_directory())
-        self.assertEqual(self.app.check_box.cget('state'), 'disabled')
-
-        self.app.directory_var.set(self.directory)
-        self.assertTrue(self.app.validate_directory())
-        self.assertEqual(self.app.check_box.cget('state'), 'normal')
 
     def test_validate_string_entry(self):
         self.app.smart_update_var.set(True)

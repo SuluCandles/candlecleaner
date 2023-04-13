@@ -49,6 +49,25 @@ class CleanerApp(tk.Tk):
             # Set the photo as the icon image
             self.iconphoto(True, photo)
 
+        self.menu = tk.Menu(self)
+        self.config(menu=self.menu)
+
+        self.file_menu = tk.Menu(self.menu, tearoff=0)
+        self.menu.add_cascade(label="File", menu=self.file_menu)
+
+        self.file_menu.add_command(label="Select Directory", command=self.select_directory)
+        self.file_menu.add_separator()
+        self.file_menu.add_command(label="Exit", command=self.quit)
+
+        self.options_menu = tk.Menu(self.menu, tearoff=0)
+        self.menu.add_cascade(label="Options", menu=self.options_menu)
+
+        self.scroll_sync_var = tk.BooleanVar(value=True)
+        self.options_menu.add_checkbutton(label="Scroll Sync", variable=self.scroll_sync_var, command=self.scroll_sync_toggle, state='active')
+
+        self.smart_update_var = tk.BooleanVar()
+        self.options_menu.add_checkbutton(label="Candle Clean", variable=self.smart_update_var, command=self.update_file_list)
+
         self.directory_frame = tk.Frame(self)
         self.directory_frame.grid(row=1, column=1, pady=10, padx=10, sticky="we")
         self.string_frame = tk.Frame(self)
@@ -56,59 +75,61 @@ class CleanerApp(tk.Tk):
 
         self.directory_var = tk.StringVar()
         self.string_var = tk.StringVar()
+        self.replace_var = tk.StringVar()
         self.regex_list = []
-
-        self.select_button = tk.Button(self.directory_frame, text="Select Directory", command=self.select_directory, padx=10, anchor="w", justify=CENTER)
-        self.select_button.pack(side="left")
-
-        self.spacer = tk.Frame(self.directory_frame, width=10, height=1, bg=self.directory_frame["bg"])
-        self.spacer.pack(side="left")
-
-        # Associate the validation function with the directory variable
-        self.directory_var.trace("w", lambda *args: self.check_box.config(state=tk.NORMAL if self.validate_directory() else tk.DISABLED))
 
         self.directory_label = tk.Entry(self.directory_frame, textvariable=self.directory_var, bd=5)
         self.directory_label.pack(side="right", fill=X, expand=True)
 
-        self.smart_update_var = tk.BooleanVar()
-        self.check_box = tk.Checkbutton(self.string_frame, text="Candle Clean", variable=self.smart_update_var, command=self.update_file_list, state=tk.DISABLED)
-        self.check_box.pack(side="right")
+        self.to_replace = tk.Frame(self.string_frame, bg=self.directory_frame["bg"])
+        self.to_replace.pack(side="left")
 
-        self.string_label = tk.Label(self.string_frame, text="Text to remove:", padx=5)
+        self.replacer = tk.Frame(self.string_frame, bg=self.directory_frame["bg"])
+        self.replacer.pack(side="left")
+
+        self.string_label = tk.Label(self.to_replace, text="Text to replace:", padx=5)
         self.string_label.pack(side="left", anchor="center")
 
-        self.string_entry = tk.Entry(self.string_frame, textvariable=self.string_var)
+        self.string_entry = tk.Entry(self.to_replace, textvariable=self.string_var)
         self.string_entry.pack(side="left", anchor="w")
         self.string_entry.config(state='normal')
 
-        # Associate the validation function with the string variable
-        self.string_var.trace("w", lambda *args: self.validate_string_entry())
-        self.string_var.trace("w", lambda *args: (self.validate_string_entry(), self.update_file_list()) )
+        self.string_remove = tk.Label(self.replacer, text="Replacement:", padx=5)
+        self.string_remove.pack(side="left", anchor="center")
 
-        self.scroll_sync_var = tk.BooleanVar()
-        self.scroll_sync_check_box = tk.Checkbutton(self, text="Scroll Sync", variable=self.scroll_sync_var, command=self.scroll_sync_toggle)
-        self.scroll_sync_check_box.grid(row=6, column=2, pady=10, sticky="w")
-        self.scroll_sync_check_box.select()
+        self.replace_entry = tk.Entry(self.replacer, textvariable=self.replace_var)
+        self.replace_entry.pack(side="left", anchor="w")
+        self.replace_entry.config(state='normal')
+
+        self.rename_button = tk.Button(self, text="Rename Files", command=self.rename_files, justify=CENTER)
+        self.rename_button.grid(row=4, column=2, pady=10)
+
+        # Associate the validation function with the string variable
+        self.string_var.trace("w", lambda *args: (self.validate_string_entry(), self.update_file_list()) )
+        self.replace_var.trace("w", lambda *args: (self.validate_string_entry(), self.update_file_list()) )
+        self.directory_var.trace("w", lambda *args: (self.verify_directory()))
 
         self.file_tree = ttk.Treeview(self, columns=("size"))
         self.file_tree.heading("#0", text="Files", anchor="w")
         self.file_tree.heading("size", text="Size", anchor="w")
-        self.file_tree.column("size", width=int(self.file_tree.column("#0")["width"] * 0.2))
+        self.file_tree.column("#0", width=300)
+        self.file_tree.column("size", width=100)
         self.file_tree.grid(row=3, column=1, padx=10, pady=10, sticky="nsew")
 
         self.updated_file_tree = ttk.Treeview(self, columns=("size"))
         self.updated_file_tree.heading("#0", text="Files", anchor="w")
         self.updated_file_tree.heading("size", text="Size", anchor="w")
-        self.updated_file_tree.column("size", width=int(self.updated_file_tree.column("#0")["width"] * 0.2))
+        self.updated_file_tree.column("#0", width=300)
+        self.updated_file_tree.column("size", width=100)
         self.updated_file_tree.grid(row=3, column=2, padx=10, pady=10, sticky="nsew")
 
         self.file_tree_scroll = tk.Scrollbar(self, orient="vertical", command=self.file_tree_yview)
-        self.file_tree_scroll.grid(row=3, column=1, rowspan=3, padx=10, pady=10, sticky="nse")
+        self.file_tree_scroll.grid(row=3, column=1, rowspan=1, padx=10, pady=10, sticky="nse")
         self.file_tree.configure(yscrollcommand=self.file_tree_scroll.set)
         self.file_tree.bind("<MouseWheel>", self.file_tree_scroll_mouse_wheel)
 
         self.updated_file_tree_scroll = tk.Scrollbar(self, orient="vertical", command=self.updated_file_tree_yview)
-        self.updated_file_tree_scroll.grid(row=3, column=2, rowspan=3, padx=10, pady=10, sticky="nse")
+        self.updated_file_tree_scroll.grid(row=3, column=2, rowspan=1, padx=10, pady=10, sticky="nse")
         self.updated_file_tree.configure(yscrollcommand=self.updated_file_tree_scroll.set)
         self.updated_file_tree.bind("<MouseWheel>", self.updated_file_tree_scroll_mouse_wheel)
 
@@ -124,12 +145,6 @@ class CleanerApp(tk.Tk):
 
         self.file_tree_scroll.config(command=sync_scrolls(self.file_tree, self.updated_file_tree))
         self.updated_file_tree_scroll.config(command=sync_scrolls(self.updated_file_tree, self.file_tree))
-
-        #self.update_button = tk.Button(self, text="Update Right Column", command=self.update_file_list, justify=CENTER)
-        #self.update_button.grid(row=6, column=1, pady=5)
-
-        self.rename_button = tk.Button(self, text="Rename Files", command=self.rename_files, justify=CENTER)
-        self.rename_button.grid(row=6, column=2, pady=5)
 
         # Configure the grid layout
         self.grid_rowconfigure(3, weight=1)
@@ -157,24 +172,25 @@ class CleanerApp(tk.Tk):
     def validate_string_entry(self):
         if self.smart_update_var.get():
             self.string_entry.config(state='disabled')
+            self.replace_entry.config(state='disabled')
         else:
             self.string_entry.config(state='normal')
-    
-    # Only allow smart cleaning if a valid directory is selected
-    def validate_directory(self):
-        directory = self.directory_var.get()
-        return os.path.isdir(directory)
+            self.replace_entry.config(state='normal')
+
+    def verify_directory(self):
+        if os.path.isdir(self.directory_var.get()):
+            self.update_file_list(True)
 
     def select_directory(self):
         directory_path = filedialog.askdirectory()
         if directory_path:
             self.directory_var.set(directory_path)
-            self.update_file_list()
+            self.update_file_list(True)
 
-    def update_file_list(self):
+    def update_file_list(self, make_regex = False):
         directory_path = self.directory_var.get()
         smart_update = self.smart_update_var.get()
-        self.regex_list = []
+        #self.regex_list = []
         self.validate_string_entry()
         if os.path.isdir(directory_path):
             # Clear the file tree
@@ -211,10 +227,11 @@ class CleanerApp(tk.Tk):
                         updated_sub_parent_id = self.updated_file_tree.insert(updated_parent_id, END, text=sub_dirname, open=True)
                         parent_ids[sub_dirpath] = {'file_tree': sub_parent_id, 'updated_file_tree': updated_sub_parent_id}
 
-                # Create regex list for selected directory                            
-                if filenames:
-                    directory_name = os.path.basename(dirpath)
-                    self.generate_regex(filenames, directory_name)
+                # Create regex list for selected directory
+                if make_regex:                       
+                    if filenames:
+                        directory_name = os.path.basename(dirpath)
+                        self.generate_regex(filenames, directory_name)
 
                 # Add files to the current folder node
                 for filename in filenames:
@@ -227,12 +244,14 @@ class CleanerApp(tk.Tk):
                             current_regex = next((regex[0] for regex in self.regex_list if regex[1] == current_directory), "")
                             string_to_remove = current_regex
                             file_shown = re.sub(r'[ \-_]+', '_', os.path.splitext(filename)[0].lower()) + os.path.splitext(filename)[1]
+                            replacement = ""
                         else:
                             string_to_remove = self.string_var.get()
+                            replacement = self.replace_var.get()
                             file_shown = filename
                         if string_to_remove:
                             pattern = re.compile(re.escape(string_to_remove), re.IGNORECASE)
-                            updated_file_name = re.sub(pattern, "", file_shown)
+                            updated_file_name = re.sub(pattern, replacement, file_shown)
                             updated_file_size = os.path.getsize(file_path)
                             self.updated_file_tree.insert(parent_ids[dirpath]['updated_file_tree'], END, text=updated_file_name, values=(updated_file_size,))
                         else:
@@ -252,11 +271,13 @@ class CleanerApp(tk.Tk):
                             current_regex = next((regex[0] for regex in self.regex_list if regex[1] == current_directory), "")
                             string_to_remove = current_regex
                             file_shown = re.sub(r'[ \-_]+', '_', os.path.splitext(filename)[0].lower()) + os.path.splitext(filename)[1]
+                            replacement = ""
                         else:
                             string_to_remove = self.string_var.get()
+                            replacement = self.replace_var.get()
                             file_shown = filename
                         pattern = re.compile(re.escape(string_to_remove), re.IGNORECASE)
-                        updated_file_name = re.sub(pattern, "", file_shown)
+                        updated_file_name = re.sub(pattern, replacement, file_shown)
                         src = os.path.join(dirpath, filename)
                         dst = os.path.join(dirpath, updated_file_name)
                         try:
@@ -281,7 +302,9 @@ class CleanerApp(tk.Tk):
             # and removing the file extension from each filename
             normalized_filenames = [re.sub(r'[ \-_]+', '_', os.path.splitext(f)[0].lower()) for f in filenames]
             common_prefix = os.path.commonprefix(normalized_filenames)
+            common_prefix = common_prefix.removesuffix('0')
             prefix_regex = re.escape(common_prefix).replace('\\_', '[ _-]')
+
             pattern = prefix_regex# + ".*"
             regex = pattern.replace('\\-', '-')
             # Add the regex and the directory to the regex list
