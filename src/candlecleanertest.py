@@ -95,7 +95,8 @@ class TestCleanerApp(unittest.TestCase):
 
         # Use patch to replace the messagebox.showinfo function with the callback function
         with patch('tkinter.messagebox.showinfo', side_effect=messagebox_callback):
-            self.app.rename_files()
+            with patch('tkinter.messagebox.askyesno', side_effect=messagebox_callback):
+                self.app.rename_files()
 
         # Check that the files have been renamed correctly
         self.assertFalse(os.path.exists('test_file1.txt'))
@@ -202,7 +203,8 @@ class TestCleanerApp(unittest.TestCase):
 
         # Use patch to replace the messagebox.showinfo function with the callback function
         with patch('tkinter.messagebox.showinfo', side_effect=messagebox_callback):
-            self.app.rename_files()
+            with patch('tkinter.messagebox.askyesno', side_effect=messagebox_callback):
+                self.app.rename_files()
 
         # Check that the files have been renamed correctly
         self.assertFalse(os.path.exists('test_cool1.txt'))
